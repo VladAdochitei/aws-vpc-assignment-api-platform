@@ -45,7 +45,7 @@ tf-fmt:
 	@echo "Formatting Terraform files..."
 	terraform fmt -recursive
 
-# Validate Terraform configuration
+# Validate Terraform configuration      -> DOES NOT WORK PROPERLY
 tf-validate:
 	@echo "Validating Terraform configuration..."
 	terraform validate
