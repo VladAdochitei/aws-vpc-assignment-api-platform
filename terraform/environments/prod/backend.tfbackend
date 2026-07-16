@@ -1,0 +1,3 @@
+# bucket = "aws-api-vpc-assignment-tfstate"
+# key    = "aws-api-vpc-assignment/prod/terraform.tfstate"
+# region = "eu-central-1"
