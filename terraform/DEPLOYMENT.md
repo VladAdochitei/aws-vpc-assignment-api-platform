@@ -10,19 +10,35 @@ Deploy Commands:
 
 ```sh
 # Initialize for dev
-terraform init -backend-config=terraform/environments/dev/backend.tfbackend
+terraform init -backend-config=environments/dev/backend.tfbackend
 ```
 
 ```sh
 # Plan for dev
-terraform plan -var-file=terraform/environments/dev/terraform.tfvars
+terraform plan -var-file=environments/dev/terraform.tfvars
 ```
 
 ```sh
 # Apply to prod
-terraform apply -var-file=terraform/environments/prod/terraform.tfvars
+terraform apply -var-file=environments/prod/terraform.tfvars
 ```
 
+OR
+
+```sh
+# Run this command and perform actions from th Makefile
+make help
+
+make tf-init-dev
+
+make tf-plan-dev
+
+make tf-apply-dev
+
+make tf-destroy-dev
+
+# ...etc
+```
 
 ## Directory Structure
 
