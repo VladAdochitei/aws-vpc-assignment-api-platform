@@ -8,7 +8,8 @@ module "vpc_lambda" {
 
   environment_variables = merge(
     { ENVIRONMENT = var.environment, 
-    LOG_LEVEL = "INFO" 
+    LOG_LEVEL = "INFO"
+    TABLE_NAME  = module.resources_table.table_name 
     },
     var.lambda_environment_variables
   )
@@ -25,6 +26,7 @@ module "subnet_lambda" {
   environment_variables = merge(
     { ENVIRONMENT = var.environment, 
     LOG_LEVEL = "INFO" 
+    TABLE_NAME  = module.resources_table.table_name
     },
     var.lambda_environment_variables
   )
@@ -106,4 +108,32 @@ module "api_gateway" {
       lambda_function_name = module.subnet_lambda.function_name
     }
   }
+}
+
+
+module "resources_table" {
+  source     = "./modules/dynamodb"
+  table_name = "${var.function_name}-DATABASE-resources"
+  hash_key   = "PK"
+  range_key  = "SK"
+
+  attributes = [
+    { name = "PK", type = "S" },
+    { name = "SK", type = "S" },
+    { name = "entity_type", type = "S" },
+  ]
+
+  global_secondary_indexes = [
+    {
+      name            = "gsi_reverse"
+      hash_key        = "SK"
+      projection_type = "ALL"
+    },
+    {
+      name            = "gsi_type"
+      hash_key        = "entity_type"
+      range_key       = "PK"
+      projection_type = "ALL"
+    },
+  ]
 }
