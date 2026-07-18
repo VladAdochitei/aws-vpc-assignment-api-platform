@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -16,5 +16,12 @@ class VPC:
     def key(self) -> dict:
         return {"PK": f"VPC#{self.vpc_id}", "SK": f"VPC#{self.vpc_id}"}
 
-    def to_item(self) -> dict:
-        return {**self.key(), "entity_type": "vpc", **self.__dict__}
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    def to_dynamodb(self) -> dict:
+        return {**self.key(), "entity_type": "vpc", **self.to_dict()}
+
+    @classmethod
+    def from_dynamodb(cls, item: dict) -> "VPC":
+        return cls(**{k: v for k, v in item.items() if k in cls.__dataclass_fields__})

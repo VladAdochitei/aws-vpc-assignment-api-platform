@@ -1,17 +1,9 @@
-# Should use the models from the models package instead of importing them directly from the files
-# Should have available methods such as:
-# - list_vpcs()
-# - create_vpc(vpc_id, vpc_name, cidr_block, region, created_by)
-# - get_vpc_by_id(vpc_id)
-# - update_vpc(vpc_id, vpc_name=None, cidr_block=None, region=None, status=None)
-# - delete_vpc(vpc_id)
-# Should also talk to the database using SQLAlchemy and handle exceptions appropriately, should also perform API calls with boto3.
-
 import json
 from pydantic import ValidationError
 from botocore.exceptions import ClientError
 from schema.vpc import VPCCreateRequest, VPCUpdateRequest, VPCResponse, VPCListResponse
 from controllers.services.dynamodb import vpc_dynamodb
+from controllers.services.boto_ec2 import vpc_ec2
 
 
 def _response(status, body):
@@ -29,7 +21,9 @@ def create_vpc_handler(event):
         body = VPCCreateRequest.model_validate_json(event.get("body") or "{}")
     except ValidationError as e:
         return _response(400, {"message": "invalid request", "errors": e.errors()})
-    vpc = vpc_dynamodb.create_vpc(**body.model_dump())
+
+    aws_vpc = vpc_ec2.create_vpc(body.cidr_block, body.vpc_name)
+    vpc = vpc_dynamodb.create_vpc(vpc_id=aws_vpc["VpcId"], **body.model_dump())
     return _response(201, VPCResponse.model_validate(vpc.to_dict()).model_dump(mode="json"))
 
 
@@ -58,6 +52,7 @@ def update_vpc_handler(event):
 def delete_vpc_handler(event):
     vpc_id = event["pathParameters"]["vpc_id"]
     try:
+        vpc_ec2.delete_vpc(vpc_id)
         vpc_dynamodb.delete_vpc(vpc_id)
     except ClientError as e:
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
