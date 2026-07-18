@@ -8,16 +8,66 @@
 # Should also talk to the database using SQLAlchemy and handle exceptions appropriately, should also perform API calls with boto3.
 
 import json
+import uuid
+from pydantic import ValidationError
+from botocore.exceptions import ClientError
+from models.vpc_model import VPC
+from schema.vpc import VPCCreateRequest, VPCUpdateRequest, VPCResponse, VPCListResponse
+from controllers.services import dynamodb
 
 
-def list_vpcs(event):
-    dummy_vpcs = [
-        {"vpc_id": "vpc-00000001", "cidr_block": "10.0.0.0/16", "name": "dummy-vpc-1"},
-        {"vpc_id": "vpc-00000002", "cidr_block": "10.1.0.0/16", "name": "dummy-vpc-2"},
-    ]
+def _response(status, body):
+    return {"statusCode": status, "headers": {"Content-Type": "application/json"}, "body": json.dumps(body)}
 
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps({"vpcs": dummy_vpcs}),
-    }
+
+def list_vpcs_handler(event):
+    items = dynamodb.query_by_type("vpc")
+    payload = VPCListResponse(items=items, count=len(items))
+    return _response(200, payload.model_dump(mode="json"))
+
+
+def create_vpc_handler(event):
+    try:
+        body = VPCCreateRequest.model_validate_json(event.get("body") or "{}")
+    except ValidationError as e:
+        return _response(400, {"message": "invalid request", "errors": e.errors()})
+    vpc = VPC(vpc_id=f"vpc-{uuid.uuid4().hex[:12]}", **body.model_dump())
+    dynamodb.put_item(vpc.to_item())
+    return _response(201, VPCResponse.model_validate(vpc.__dict__).model_dump(mode="json"))
+
+
+def get_vpc_handler(event):
+    vpc_id = event["pathParameters"]["vpc_id"]
+    item = dynamodb.get_item({"PK": f"VPC#{vpc_id}", "SK": f"VPC#{vpc_id}"})
+    if not item:
+        return _response(404, {"message": "not found"})
+    return _response(200, VPCResponse.model_validate(item).model_dump(mode="json"))
+
+
+def update_vpc_handler(event):
+    vpc_id = event["pathParameters"]["vpc_id"]
+    try:
+        body = VPCUpdateRequest.model_validate_json(event.get("body") or "{}")
+    except ValidationError as e:
+        return _response(400, {"message": "invalid request", "errors": e.errors()})
+    fields = body.model_dump(exclude_none=True)
+    if not fields:
+        return _response(400, {"message": "no fields to update"})
+    try:
+        item = dynamodb.update_item({"PK": f"VPC#{vpc_id}", "SK": f"VPC#{vpc_id}"}, fields)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return _response(404, {"message": "not found"})
+        raise
+    return _response(200, VPCResponse.model_validate(item).model_dump(mode="json"))
+
+
+def delete_vpc_handler(event):
+    vpc_id = event["pathParameters"]["vpc_id"]
+    try:
+        dynamodb.delete_item({"PK": f"VPC#{vpc_id}", "SK": f"VPC#{vpc_id}"})
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return _response(404, {"message": "not found"})
+        raise
+    return _response(204, "")
