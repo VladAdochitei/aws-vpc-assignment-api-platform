@@ -3,9 +3,9 @@ from models.vpc_model import VPC
 from controllers.services.dynamodb import base_dynamodb
 
 
-def create_vpc(vpc_name: str, cidr_block: str, region: str, created_by: str | None = None) -> VPC:
+def create_vpc(vpc_id: str, vpc_name: str, cidr_block: str, region: str, created_by: str | None = None) -> VPC:
     vpc = VPC(
-        vpc_id=f"vpc-{uuid.uuid4().hex[:12]}",
+        vpc_id=vpc_id,
         vpc_name=vpc_name,
         cidr_block=cidr_block,
         region=region,
@@ -34,3 +34,4 @@ def update_vpc(vpc_id: str, **fields) -> VPC | None:
 
 def delete_vpc(vpc_id: str):
     base_dynamodb.delete_item({"PK": f"VPC#{vpc_id}", "SK": f"VPC#{vpc_id}"})
+    return 

@@ -40,12 +40,19 @@ def update_vpc_handler(event):
         body = VPCUpdateRequest.model_validate_json(event.get("body") or "{}")
     except ValidationError as e:
         return _response(400, {"message": "invalid request", "errors": e.errors()})
+
+    fields = body.model_dump(exclude_none=True)
+
     try:
-        vpc = vpc_dynamodb.update_vpc(vpc_id, **body.model_dump(exclude_none=True))
+        vpc = vpc_dynamodb.update_vpc(vpc_id, **fields)
     except ClientError as e:
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
             return _response(404, {"message": "not found"})
         raise
+
+    if "vpc_name" in fields:
+        vpc_ec2.update_vpc_name(vpc_id, fields["vpc_name"])
+
     return _response(200, VPCResponse.model_validate(vpc.to_dict()).model_dump(mode="json"))
 
 
@@ -58,4 +65,5 @@ def delete_vpc_handler(event):
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
             return _response(404, {"message": "not found"})
         raise
-    return _response(204, "")
+    # return _response(204, "")
+    return _response(200, {"vpc_id": vpc_id, "message": "deleted"})
