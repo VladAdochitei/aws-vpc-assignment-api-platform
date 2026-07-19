@@ -31,6 +31,7 @@ resource "aws_lambda_function" "this" {
   runtime          = var.runtime
   filename         = data.archive_file.source.output_path
   source_code_hash = data.archive_file.source.output_base64sha256
+  architectures    = [var.architecture]
 
   environment {
     variables = var.environment_variables

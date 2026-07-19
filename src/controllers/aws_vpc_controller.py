@@ -1,23 +1,69 @@
-# Should use the models from the models package instead of importing them directly from the files
-# Should have available methods such as:
-# - list_vpcs()
-# - create_vpc(vpc_id, vpc_name, cidr_block, region, created_by)
-# - get_vpc_by_id(vpc_id)
-# - update_vpc(vpc_id, vpc_name=None, cidr_block=None, region=None, status=None)
-# - delete_vpc(vpc_id)
-# Should also talk to the database using SQLAlchemy and handle exceptions appropriately, should also perform API calls with boto3.
-
 import json
+from pydantic import ValidationError
+from botocore.exceptions import ClientError
+from schema.vpc import VPCCreateRequest, VPCUpdateRequest, VPCResponse, VPCListResponse
+from controllers.services.dynamodb import vpc_dynamodb
+from controllers.services.boto_ec2 import vpc_ec2
 
 
-def list_vpcs(event):
-    dummy_vpcs = [
-        {"vpc_id": "vpc-00000001", "cidr_block": "10.0.0.0/16", "name": "dummy-vpc-1"},
-        {"vpc_id": "vpc-00000002", "cidr_block": "10.1.0.0/16", "name": "dummy-vpc-2"},
-    ]
+def _response(status, body):
+    return {"statusCode": status, "headers": {"Content-Type": "application/json"}, "body": json.dumps(body)}
 
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps({"vpcs": dummy_vpcs}),
-    }
+
+def list_vpcs_handler(event):
+    vpcs = vpc_dynamodb.list_vpcs()
+    payload = VPCListResponse(items=[v.to_dict() for v in vpcs], count=len(vpcs))
+    return _response(200, payload.model_dump(mode="json"))
+
+
+def create_vpc_handler(event):
+    try:
+        body = VPCCreateRequest.model_validate_json(event.get("body") or "{}")
+    except ValidationError as e:
+        return _response(400, {"message": "invalid request", "errors": e.errors()})
+
+    aws_vpc = vpc_ec2.create_vpc(body.cidr_block, body.vpc_name)
+    vpc = vpc_dynamodb.create_vpc(vpc_id=aws_vpc["VpcId"], **body.model_dump())
+    return _response(201, VPCResponse.model_validate(vpc.to_dict()).model_dump(mode="json"))
+
+
+def get_vpc_handler(event):
+    vpc = vpc_dynamodb.get_vpc(event["pathParameters"]["vpc_id"])
+    if not vpc:
+        return _response(404, {"message": "not found"})
+    return _response(200, VPCResponse.model_validate(vpc.to_dict()).model_dump(mode="json"))
+
+
+def update_vpc_handler(event):
+    vpc_id = event["pathParameters"]["vpc_id"]
+    try:
+        body = VPCUpdateRequest.model_validate_json(event.get("body") or "{}")
+    except ValidationError as e:
+        return _response(400, {"message": "invalid request", "errors": e.errors()})
+
+    fields = body.model_dump(exclude_none=True)
+
+    try:
+        vpc = vpc_dynamodb.update_vpc(vpc_id, **fields)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return _response(404, {"message": "not found"})
+        raise
+
+    if "vpc_name" in fields:
+        vpc_ec2.update_vpc_name(vpc_id, fields["vpc_name"])
+
+    return _response(200, VPCResponse.model_validate(vpc.to_dict()).model_dump(mode="json"))
+
+
+def delete_vpc_handler(event):
+    vpc_id = event["pathParameters"]["vpc_id"]
+    try:
+        vpc_ec2.delete_vpc(vpc_id)
+        vpc_dynamodb.delete_vpc(vpc_id)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return _response(404, {"message": "not found"})
+        raise
+    # return _response(204, "")
+    return _response(200, {"vpc_id": vpc_id, "message": "deleted"})

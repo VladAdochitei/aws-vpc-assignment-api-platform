@@ -24,3 +24,14 @@ variable "environment_variables" {
   type        = map(string)
   default     = {}
 }
+
+variable "architecture" {
+  description = "Lambda instruction set architecture (x86_64 or arm64)"
+  type        = string
+  default     = "x86_64"
+
+  validation {
+    condition     = contains(["x86_64", "arm64"], var.architecture)
+    error_message = "architecture must be x86_64 or arm64."
+  }
+}

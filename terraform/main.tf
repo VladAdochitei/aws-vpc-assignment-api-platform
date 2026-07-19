@@ -4,10 +4,12 @@ module "vpc_lambda" {
   function_name = "${var.function_name}-vpc"
   handler       = "lambda_vpc_handler.api_handler"
   runtime       = var.lambda_runtime
-  source_dir    = "${path.module}/../src"
+  source_dir = "${path.module}/../build/package"
+  architecture = var.lambda_architecture
 
   environment_variables = merge(
-    { ENVIRONMENT = var.environment, 
+    { 
+    ENVIRONMENT = var.environment, 
     LOG_LEVEL = "INFO"
     TABLE_NAME  = module.resources_table.table_name 
     },
@@ -21,8 +23,8 @@ module "subnet_lambda" {
   function_name = "${var.function_name}-subnet"
   handler       = "lambda_subnet_handler.api_handler"
   runtime       = var.lambda_runtime
-  source_dir    = "${path.module}/../src"
-
+  source_dir = "${path.module}/../build/package"
+  architecture = var.lambda_architecture
   environment_variables = merge(
     { ENVIRONMENT = var.environment, 
     LOG_LEVEL = "INFO" 

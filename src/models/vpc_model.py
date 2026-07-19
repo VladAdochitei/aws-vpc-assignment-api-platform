@@ -1,22 +1,27 @@
-from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-
-from src.models.base import Base
+from dataclasses import dataclass, field, asdict
+from datetime import datetime, timezone
+from typing import Optional
 
 
-class VPC(Base):
-    __tablename__ = "vpcs"
+@dataclass
+class VPC:
+    vpc_id: str
+    vpc_name: str
+    cidr_block: str
+    region: str
+    created_by: Optional[str] = None
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    status: str = "active"
 
-    id = Column(Integer, primary_key=True)
-    vpc_id = Column(String(255), unique=True, nullable=False, index=True)
-    vpc_name = Column(String(255), nullable=False)
-    cidr_block = Column(String(18), nullable=False)
-    region = Column(String(50), nullable=False)
-    created_by = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    status = Column(String(50), default="active")
+    def key(self) -> dict:
+        return {"PK": f"VPC#{self.vpc_id}", "SK": f"VPC#{self.vpc_id}"}
 
-    subnets = relationship("Subnet", back_populates="vpc", cascade="all, delete-orphan")
+    def to_dict(self) -> dict:
+        return asdict(self)
 
+    def to_dynamodb(self) -> dict:
+        return {**self.key(), "entity_type": "vpc", **self.to_dict()}
 
+    @classmethod
+    def from_dynamodb(cls, item: dict) -> "VPC":
+        return cls(**{k: v for k, v in item.items() if k in cls.__dataclass_fields__})

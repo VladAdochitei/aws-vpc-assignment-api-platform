@@ -33,3 +33,14 @@ variable "lambda_environment_variables" {
   type        = map(string)
   default     = {}
 }
+
+variable "lambda_architecture" {
+  description = "Lambda instruction set architecture (x86_64 or arm64); must match Makefile ARCH"
+  type        = string
+  default     = "x86_64"
+
+  validation {
+    condition     = contains(["x86_64", "arm64"], var.lambda_architecture)
+    error_message = "lambda_architecture must be x86_64 or arm64."
+  }
+}

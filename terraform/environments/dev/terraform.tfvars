@@ -1,9 +1,8 @@
 aws_region    = "eu-central-1"
 environment   = "dev"
 function_name = "vpc-assignment-api-dev"
-
-lambda_handler = "lambda_handlers.api_handler"
-lambda_runtime = "python3.12"
+lambda_runtime = "python3.14"
+lambda_architecture = "x86_64"
 
 lambda_environment_variables = {
   # Add your environment variables here as needed
