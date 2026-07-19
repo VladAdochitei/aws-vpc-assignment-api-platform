@@ -1,7 +1,6 @@
-# src/schema/subnet.py
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 
 
 class SubnetCreateRequest(BaseModel):
@@ -9,21 +8,11 @@ class SubnetCreateRequest(BaseModel):
     cidr_block: str
     availability_zone: Optional[str] = None
 
-    @field_validator("cidr_block")
-    @classmethod
-    def validate_cidr(cls, v: str) -> str:
-        import ipaddress
-        try:
-            ipaddress.ip_network(v, strict=True)
-        except ValueError as e:
-            raise ValueError(f"Invalid CIDR block: {v}") from e
-        return v
-
 
 class SubnetUpdateRequest(BaseModel):
     subnet_name: Optional[str] = None
-    availability_zone: Optional[str] = None
     status: Optional[str] = None
+    # cidr_block and availability_zone omitted — immutable in AWS, same reasoning as VPC's cidr_block
 
 
 class SubnetResponse(BaseModel):

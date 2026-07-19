@@ -35,3 +35,25 @@ def update_item(key: dict, fields: dict) -> dict:
 
 def delete_item(key: dict):
     _table.delete_item(Key=key, ConditionExpression="attribute_exists(PK)")
+
+def query_by_pk(pk: str, sk_prefix: str | None = None) -> list[dict]:
+    if sk_prefix:
+        resp = _table.query(
+            KeyConditionExpression="PK = :pk AND begins_with(SK, :sk)",
+            ExpressionAttributeValues={":pk": pk, ":sk": sk_prefix},
+        )
+    else:
+        resp = _table.query(
+            KeyConditionExpression="PK = :pk",
+            ExpressionAttributeValues={":pk": pk},
+        )
+    return resp.get("Items", [])
+
+
+def query_by_sk(sk: str) -> list[dict]:
+    resp = _table.query(
+        IndexName="gsi_reverse",
+        KeyConditionExpression="SK = :sk",
+        ExpressionAttributeValues={":sk": sk},
+    )
+    return resp.get("Items", [])

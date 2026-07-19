@@ -1,21 +1,19 @@
 from controllers.aws_subnet_controller import (
-    list_subnets #, create_subnet, get_subnet, update_subnet, delete_subnet,
-    # list_subnets_by_vpc, create_subnet_for_vpc,
+    list_subnets_handler, create_subnet_handler, get_subnet_handler,
+    update_subnet_handler, delete_subnet_handler, list_subnets_by_vpc_handler,
 )
 
 ROUTES = {
-    ("GET", "/subnets"): list_subnets,
-    # ("GET", "/subnets/{subnet_id}"): get_subnet,
-    # ("PUT", "/subnets/{subnet_id}"): update_subnet,
-    # ("DELETE", "/subnets/{subnet_id}"): delete_subnet,
-    # ("GET", "/vpcs/{vpc_id}/subnets"): list_subnets_by_vpc,
-    # ("POST", "/vpcs/{vpc_id}/subnets"): create_subnet_for_vpc,
+    ("GET", "/subnets"): list_subnets_handler,
+    ("GET", "/subnets/{subnet_id}"): get_subnet_handler,
+    ("PUT", "/subnets/{subnet_id}"): update_subnet_handler,
+    ("DELETE", "/subnets/{subnet_id}"): delete_subnet_handler,
+    ("GET", "/vpcs/{vpc_id}/subnets"): list_subnets_by_vpc_handler,
+    ("POST", "/vpcs/{vpc_id}/subnets"): create_subnet_handler,
 }
 
 def api_handler(event, context):
-    print(event)
-    key = (event["httpMethod"], event["resource"])
-    fn = ROUTES.get(key)
+    fn = ROUTES.get((event["httpMethod"], event["resource"]))
     if not fn:
-        return {"statusCode": 404, "body": '{"message": "not found"}'}
+        return {"statusCode": 404, "headers": {"Content-Type": "application/json"}, "body": '{"message": "not found"}'}
     return fn(event)

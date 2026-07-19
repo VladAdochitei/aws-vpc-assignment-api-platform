@@ -1,4 +1,3 @@
-import uuid
 from models.vpc_model import VPC
 from controllers.services.dynamodb import base_dynamodb
 
