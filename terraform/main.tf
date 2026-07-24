@@ -34,6 +34,19 @@ module "subnet_lambda" {
   )
 }
 
+module "authorizer_lambda" {
+  source        = "./modules/lambda"
+  function_name = "vpc-assignment-api-${var.environment}-authorizer"
+  handler       = "lambda_authorizer_handler.api_handler"
+  runtime       = var.lambda_runtime
+  source_dir    = "${path.module}/../build/package"
+  architecture  = var.lambda_architecture
+
+  environment_variables = {
+    API_KEYS = var.api_keys
+  }
+}
+
 module "api_gateway" {
   source = "./modules/api-gateway"
 
@@ -110,6 +123,8 @@ module "api_gateway" {
       lambda_function_name = module.subnet_lambda.function_name
     }
   }
+  authorizer_lambda_invoke_arn = module.authorizer_lambda.invoke_arn
+  authorizer_function_name     = module.authorizer_lambda.function_name
 }
 
 

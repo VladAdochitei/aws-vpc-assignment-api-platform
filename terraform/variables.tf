@@ -44,3 +44,9 @@ variable "lambda_architecture" {
     error_message = "lambda_architecture must be x86_64 or arm64."
   }
 }
+
+variable "api_keys" {
+  description = "Comma-separated list of valid API keys for the Lambda Authorizer"
+  type        = string
+  sensitive   = true
+}

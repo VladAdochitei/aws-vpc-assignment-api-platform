@@ -10,3 +10,5 @@ lambda_environment_variables = {
   # DATABASE_URL       = "postgresql://user:pass@host:5432/db"
   # API_KEYS_ALLOWLIST = "key1,key2"
 }
+
+api_keys = "dev-local-key-CHANGE-ME"

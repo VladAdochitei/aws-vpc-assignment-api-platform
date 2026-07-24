@@ -1,3 +1,20 @@
+resource "aws_api_gateway_authorizer" "token" {
+  name                             = "${var.api_name}-authorizer"
+  rest_api_id                      = aws_api_gateway_rest_api.this.id
+  authorizer_uri                   = var.authorizer_lambda_invoke_arn
+  type                             = "TOKEN"
+  identity_source                  = "method.request.header.Authorization"
+  authorizer_result_ttl_in_seconds = var.authorizer_ttl_seconds
+}
+
+resource "aws_lambda_permission" "authorizer_invoke" {
+  statement_id  = "AllowAPIGatewayInvokeAuthorizer"
+  action        = "lambda:InvokeFunction"
+  function_name = var.authorizer_function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.this.execution_arn}/authorizers/${aws_api_gateway_authorizer.token.id}"
+}
+
 resource "aws_api_gateway_rest_api" "this" {
   name        = var.api_name
   description = "API Gateway for ${var.api_name}"
@@ -81,7 +98,8 @@ resource "aws_api_gateway_method" "route" {
   rest_api_id         = aws_api_gateway_rest_api.this.id
   resource_id         = local.resource_ids[local.route_meta[each.key].path_key]
   http_method         = each.value.http_method
-  authorization       = "NONE"
+  authorization       = "CUSTOM"
+  authorizer_id = aws_api_gateway_authorizer.token.id
   request_parameters  = local.route_meta[each.key].request_parameters
 }
 
